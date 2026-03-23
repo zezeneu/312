@@ -7,81 +7,116 @@
 #include <algorithm>
 #include <clocale>
 #include <windows.h>
+#include <regex>
 
 using namespace std;
 
 class Lesson {
 public:
-    string date; 
+    string date;
     string time;
     string teacher;
 
-    void print() const {
-        cout << setw(15) << left << date
-            << setw(10) << left << time
-            << setw(30) << left << teacher << endl;
+    void Print() const {
+        cout << setw(15) << left << date 
+             << setw(10) << left << time 
+             << setw(30) << left << teacher << endl;
     }
 };
 
-Lesson parseLesson(const string& line) {
+void PrintHeader() {
+    cout << "\n==============================================================" << endl;
+    cout << setw(15) << left << "Ð”Ð°Ñ‚Ð°"
+         << setw(10) << left << "Ð’Ñ€ÐµÐ¼Ñ"
+         << setw(30) << left << "ÐŸÑ€ÐµÐ¿Ð¾Ð´Ð°Ð²Ð°Ñ‚ÐµÐ»ÑŒ" << endl;
+    cout << "==============================================================" << endl;
+}
+
+bool IsValidDate(const string& date) {
+    regex datePattern(R"(\d{4}\.\d{2}\.\d{2})");
+    return regex_match(date, datePattern);
+}
+
+bool IsValidTime(const string& time) {
+    regex timePattern(R"(\d{2}:\d{2})");
+    return regex_match(time, timePattern);
+}
+
+Lesson ParseLesson(const string& line) {
     Lesson lesson;
     stringstream ss(line);
-
-    ss >> lesson.date;
-
-    ss >> lesson.time;
-
-    string teacherWithQuotes;
-    getline(ss, teacherWithQuotes);
-
-    size_t start = teacherWithQuotes.find_first_not_of(" \t");
+    
+    ss >> lesson.date >> lesson.time;
+    
+    string teacherName;
+    getline(ss, teacherName);
+ 
+    size_t start = teacherName.find_first_not_of(" \t");
     if (start != string::npos) {
-        teacherWithQuotes = teacherWithQuotes.substr(start);
+        teacherName = teacherName.substr(start);
     }
-    size_t end = teacherWithQuotes.find_last_not_of(" \t");
+    size_t end = teacherName.find_last_not_of(" \t");
     if (end != string::npos) {
-        teacherWithQuotes = teacherWithQuotes.substr(0, end + 1);
+        teacherName = teacherName.substr(0, end + 1);
     }
-
-    lesson.teacher = teacherWithQuotes;
-
+    
+    lesson.teacher = teacherName;
     return lesson;
 }
 
-void printHeader() {
-    cout << "\n==============================================================" << endl;
-    cout << setw(15) << left << "Äàòà"
-        << setw(10) << left << "Âðåìÿ"
-        << setw(30) << left << "Ïðåïîäàâàòåëü" << endl;
-    cout << "==============================================================" << endl;
+vector<Lesson> ReadLessonsFromFile(const string& filename) {
+    vector<Lesson> lessons;
+    ifstream inputFile(filename);
+    
+    if (!inputFile.is_open()) {
+        cerr << "ÐžÑˆÐ¸Ð±ÐºÐ°: ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» " << filename << endl;
+        return lessons;
+    }
+    
+    string line;
+    int lineNumber = 0;
+    
+    while (getline(inputFile, line)) {
+        lineNumber++;
+        if (line.empty()) continue;
+        
+        Lesson l = ParseLesson(line);
+        
+        if (IsValidDate(l.date) && IsValidTime(l.time)) {
+            lessons.push_back(l);
+        } else {
+            cerr << "ÐŸÑ€ÐµÐ´ÑƒÐ¿Ñ€ÐµÐ¶Ð´ÐµÐ½Ð¸Ðµ: ÐÐµÐ²ÐµÑ€Ð½Ñ‹Ð¹ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ Ð² ÑÑ‚Ñ€Ð¾ÐºÐµ " << lineNumber 
+                 << ": " << line << endl;
+        }
+    }
+    
+    inputFile.close();
+    return lessons;
+}
+
+void PrintLessons(const vector<Lesson>& lessons) {
+    if (lessons.empty()) {
+        cout << "ÐÐµÑ‚ Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð´Ð»Ñ Ð¾Ñ‚Ð¾Ð±Ñ€Ð°Ð¶ÐµÐ½Ð¸Ñ." << endl;
+        return;
+    }
+    
+    PrintHeader();
+    for (const auto& lesson : lessons) {
+        lesson.Print();
+    }
 }
 
 int main() {
     setlocale(LC_ALL, "Russian");
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
-
-    ifstream inputFile("text.txt");
-
-    if (!inputFile.is_open()) {
-        cerr << "Îøèáêà: Íå óäàëîñü îòêðûòü ôàéë text.txt" << endl;
-        return 1;
-    }
-
-    vector<Lesson> lessons;
-    string line;
-    while (getline(inputFile, line)) {
-        if (!line.empty()) {
-            lessons.push_back(parseLesson(line));
-        }
-    }
-
-    inputFile.close();
-    cout << "Ñïèñîê ó÷åáíûõ çàíÿòèé èç ôàéëà text.txt:" << endl;
-    printHeader();
-    for (const auto& lesson : lessons) {
-        lesson.print();
-    }
-
+    
+    cout << "Ð§Ñ‚ÐµÐ½Ð¸Ðµ Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð¸Ð· Ñ„Ð°Ð¹Ð»Ð° text.txt..." << endl;
+    
+    vector<Lesson> lessons = ReadLessonsFromFile("text.txt");
+    
+    cout << "\nÐ¡Ð¿Ð¸ÑÐ¾Ðº ÑƒÑ‡ÐµÐ±Ð½Ñ‹Ñ… Ð·Ð°Ð½ÑÑ‚Ð¸Ð¹:" << endl;
+    PrintLessons(lessons);
+    
     return 0;
 }
